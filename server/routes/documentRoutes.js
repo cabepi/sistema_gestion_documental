@@ -110,4 +110,31 @@ router.get('/:id', async (req, res) => {
     }
 });
 
+// PATCH /api/documents/:id/status
+router.patch('/:id/status', async (req, res) => {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    const validStatuses = ['DRAFT', 'REVIEW', 'APPROVED', 'REJECTED'];
+    if (!validStatuses.includes(status)) {
+        return res.status(400).json({ message: 'Estado inválido' });
+    }
+
+    try {
+        const { rows } = await query(
+            'UPDATE sgd.documents SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING *',
+            [status, id]
+        );
+
+        if (rows.length === 0) {
+            return res.status(404).json({ message: 'Documento no encontrado' });
+        }
+
+        res.json(rows[0]);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server Error');
+    }
+});
+
 export default router;

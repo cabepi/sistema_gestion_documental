@@ -27,8 +27,28 @@ export const ViewerAndHistory: React.FC = () => {
 
     const handleBack = () => navigate(-1);
 
+    const updateStatus = async (newStatus: string) => {
+        try {
+            const res = await apiClient.patch(`/documents/${docId}/status`, { status: newStatus });
+            setDocument({ ...document, status: res.data.status });
+        } catch (error) {
+            console.error('Error updating status:', error);
+            alert('Error al actualizar el estado del documento');
+        }
+    };
+
     if (loading) return <div className="min-h-screen flex items-center justify-center dark:bg-background-dark dark:text-white">Cargando documento...</div>;
     if (!document) return <div className="min-h-screen flex items-center justify-center dark:bg-background-dark dark:text-white">Documento no encontrado o ID inválido.</div>;
+
+    const getStatusColor = (status: string) => {
+        switch (status) {
+            case 'APPROVED': return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400';
+            case 'REJECTED': return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
+            case 'REVIEW': return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
+            case 'DRAFT': return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400';
+            default: return 'bg-slate-100 text-slate-600';
+        }
+    };
 
     return (
         <div className="bg-background-light dark:bg-background-dark text-[#111718] dark:text-white min-h-screen flex flex-col font-display">
@@ -51,7 +71,9 @@ export const ViewerAndHistory: React.FC = () => {
                         Volver
                     </button>
                     <div className="h-6 w-px bg-[#e5e7eb] dark:border-[#2a3c3f]"></div>
-                    <span className="font-bold text-sm bg-primary/10 text-primary px-3 py-1 rounded">{document.status}</span>
+                    <span className={`font-bold text-xs px-3 py-1 rounded uppercase tracking-wide ${getStatusColor(document.status)}`}>
+                        {document.status}
+                    </span>
                 </div>
             </header>
 
@@ -66,14 +88,24 @@ export const ViewerAndHistory: React.FC = () => {
                     <span className="bg-primary/20 text-primary text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wide">{document.type_name}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                    <button className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-red-500 border border-red-200 hover:bg-red-50 transition-colors text-sm font-medium">
-                        <span className="material-symbols-outlined text-lg">cancel</span>
-                        Rechazar
-                    </button>
-                    <button className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary text-[#111718] hover:bg-opacity-90 transition-all text-sm font-bold">
-                        <span className="material-symbols-outlined text-lg">check_circle</span>
-                        Aprobar Documento
-                    </button>
+                    {document.status !== 'REJECTED' && (
+                        <button
+                            onClick={() => updateStatus('REJECTED')}
+                            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-red-500 border border-red-200 hover:bg-red-50 transition-colors text-sm font-medium"
+                        >
+                            <span className="material-symbols-outlined text-lg">cancel</span>
+                            Rechazar
+                        </button>
+                    )}
+                    {document.status !== 'APPROVED' && (
+                        <button
+                            onClick={() => updateStatus('APPROVED')}
+                            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary text-[#111718] hover:bg-opacity-90 transition-all text-sm font-bold"
+                        >
+                            <span className="material-symbols-outlined text-lg">check_circle</span>
+                            Aprobar Documento
+                        </button>
+                    )}
                 </div>
             </div>
 

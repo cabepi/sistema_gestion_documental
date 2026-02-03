@@ -42,6 +42,22 @@ export const DocumentExplorer: React.FC = () => {
         navigate(`/viewer?id=${id}`);
     };
 
+    const handleDownload = async (id: number, e: React.MouseEvent) => {
+        e.stopPropagation(); // Prevent row click
+        try {
+            // Fetch document details to get the fresh presigned URL
+            const res = await apiClient.get(`/documents/${id}`);
+            if (res.data.file_url) {
+                window.open(res.data.file_url, '_blank');
+            } else {
+                alert('No hay archivo disponible para descargar.');
+            }
+        } catch (error) {
+            console.error('Error downloading document:', error);
+            alert('Error al descargar el documento.');
+        }
+    };
+
     return (
         <div className="flex flex-col h-full bg-slate-50 dark:bg-black/5">
             {/* Filters & Tools */}
@@ -128,7 +144,7 @@ export const DocumentExplorer: React.FC = () => {
                                                     <button onClick={() => handleViewDocument(doc.id)} className="p-2 text-slate-400 hover:text-primary transition-colors" title="Ver Documento">
                                                         <span className="material-symbols-outlined text-[20px]">visibility</span>
                                                     </button>
-                                                    <button className="p-2 text-slate-400 hover:text-primary transition-colors">
+                                                    <button onClick={(e) => handleDownload(doc.id, e)} className="p-2 text-slate-400 hover:text-primary transition-colors" title="Descargar">
                                                         <span className="material-symbols-outlined text-[20px]">download</span>
                                                     </button>
                                                 </div>
