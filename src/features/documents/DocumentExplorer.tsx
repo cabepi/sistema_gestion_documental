@@ -1,32 +1,73 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { apiClient } from '../../api/client';
+import { useNavigate } from 'react-router-dom';
+
+interface Document {
+    id: number;
+    title: string;
+    description: string;
+    type_name: string;
+    file_path: string;
+    status: string;
+    created_at: string;
+    uploader_name: string;
+}
 
 export const DocumentExplorer: React.FC = () => {
+    const [documents, setDocuments] = useState<Document[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [searchTerm, setSearchTerm] = useState('');
+    const navigate = useNavigate();
+
+    const fetchDocuments = async () => {
+        setLoading(true);
+        try {
+            const params: any = {};
+            if (searchTerm) params.search = searchTerm;
+
+            const res = await apiClient.get('/documents', { params });
+            setDocuments(res.data);
+        } catch (error) {
+            console.error('Error fetching documents:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchDocuments();
+    }, [searchTerm]); // Re-fetch when search changes (debounce could be added)
+
+    const handleViewDocument = (id: number) => {
+        navigate(`/viewer?id=${id}`);
+    };
+
     return (
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col h-full bg-slate-50 dark:bg-black/5">
             {/* Filters & Tools */}
             <div className="px-6 py-4 flex items-center justify-between bg-white dark:bg-background-dark border-b border-slate-200 dark:border-slate-800">
-                <div className="flex items-center gap-2">
-                    <span className="text-sm font-bold text-slate-400 mr-2">Filters:</span>
-                    <button className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg text-sm border border-slate-200 dark:border-slate-700 hover:border-primary transition-colors">
-                        Date Range
-                        <span className="material-symbols-outlined text-[18px]">keyboard_arrow_down</span>
+                <div className="flex items-center gap-4">
+                    <div className="relative">
+                        <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">search</span>
+                        <input
+                            type="text"
+                            placeholder="Buscar documentos..."
+                            className="pl-9 pr-4 py-1.5 bg-slate-100 dark:bg-slate-800 border-none rounded-lg text-sm focus:ring-2 focus:ring-primary/20 transition-all w-64 dark:text-white"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+                    <div className="h-6 w-px bg-slate-200 dark:bg-slate-700"></div>
+                    <button className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg text-sm border border-slate-200 dark:border-slate-700 hover:border-primary transition-colors">
+                        <span className="material-symbols-outlined text-[18px]">filter_list</span>
+                        Filtros
                     </button>
-                    <button className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg text-sm border border-slate-200 dark:border-slate-700 hover:border-primary transition-colors">
-                        Tags
-                        <span className="material-symbols-outlined text-[18px]">keyboard_arrow_down</span>
-                    </button>
-                    <button className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg text-sm border border-slate-200 dark:border-slate-700 hover:border-primary transition-colors">
-                        File Type
-                        <span className="material-symbols-outlined text-[18px]">keyboard_arrow_down</span>
-                    </button>
-                    <div className="h-6 w-px bg-slate-200 dark:bg-slate-700 mx-2"></div>
-                    <button className="text-primary text-sm font-medium hover:underline">Clear all</button>
                 </div>
                 <div className="flex items-center gap-2">
-                    <button className="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                    <button className="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
                         <span className="material-symbols-outlined">view_list</span>
                     </button>
-                    <button className="p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                    <button className="p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
                         <span className="material-symbols-outlined">grid_view</span>
                     </button>
                 </div>
@@ -34,120 +75,81 @@ export const DocumentExplorer: React.FC = () => {
 
             {/* Content Area */}
             <div className="flex-1 overflow-auto p-6">
-                <div className="bg-white dark:bg-background-dark rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
-                    <table className="w-full text-left border-collapse">
-                        <thead>
-                            <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800">
-                                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider w-1/3">Filename</th>
-                                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Upload Date</th>
-                                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Author</th>
-                                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
-                                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                            {/* Row 1 */}
-                            <tr className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                                <td className="px-6 py-4">
-                                    <div className="flex items-center gap-3">
-                                        <span className="material-symbols-outlined text-red-500">picture_as_pdf</span>
-                                        <div>
-                                            <p className="text-sm font-bold text-slate-900 dark:text-white">Decree_042_2023_Legal_Framework.pdf</p>
-                                            <p className="text-xs text-slate-500">2.4 MB • Legal/Decrees</p>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">Oct 12, 2023</td>
-                                <td className="px-6 py-4">
-                                    <div className="flex items-center gap-2">
-                                        <div className="size-6 rounded-full bg-slate-200 overflow-hidden">
-                                            <img alt="Juan Perez" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDmIVi_UImnDnJI46PS8jv6Ng0zzGjXI_nENP2sPXj18o6-w8MBcT69LzV5IakyyeALfe7cnikyZkvMyAnsxK5mWnsFPIdDDmaRNQjQDDaHLCVs8fROv4mYYacjkgEbWd62oqlMSLhuPPuRcC6dOWTBk9dIyHBZY3jQzQxAdknRgaqfF8kQuQuPenyDTzvqPBMgZxTh7xST6Hka1sm1_809wQu9vYRpQS76eY5ZWqJdRr969eZugt3MAGqeWej72HFEllBZPdpSp9o" />
-                                        </div>
-                                        <span className="text-sm text-slate-700 dark:text-slate-300">Juan Perez</span>
-                                    </div>
-                                </td>
-                                <td className="px-6 py-4">
-                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                                        Approved
-                                    </span>
-                                </td>
-                                <td className="px-6 py-4 text-right">
-                                    <div className="flex items-center justify-end gap-1">
-                                        <button className="p-2 text-slate-400 hover:text-primary transition-colors">
-                                            <span className="material-symbols-outlined text-[20px]">visibility</span>
-                                        </button>
-                                        <button className="p-2 text-slate-400 hover:text-primary transition-colors">
-                                            <span className="material-symbols-outlined text-[20px]">download</span>
-                                        </button>
-                                        <button className="p-2 text-slate-400 hover:text-primary transition-colors">
-                                            <span className="material-symbols-outlined text-[20px]">share</span>
-                                        </button>
-                                        <button className="p-2 text-slate-400 hover:text-primary transition-colors">
-                                            <span className="material-symbols-outlined text-[20px]">more_vert</span>
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                            {/* Row 2 */}
-                            <tr className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                                <td className="px-6 py-4">
-                                    <div className="flex items-center gap-3">
-                                        <span className="material-symbols-outlined text-blue-500">description</span>
-                                        <div>
-                                            <p className="text-sm font-bold text-slate-900 dark:text-white">Heritage_Site_Restoration_Report.docx</p>
-                                            <p className="text-xs text-slate-500">1.1 MB • Heritage Files</p>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">Oct 10, 2023</td>
-                                <td className="px-6 py-4">
-                                    <div className="flex items-center gap-2">
-                                        <div className="size-6 rounded-full bg-slate-200 overflow-hidden">
-                                            <img alt="Maria Santos" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA_q-AWXl9cUDhi8yxJQgLlvcahehxxtZAvYHp8jOzBWBU2_V4HNJq2VecEUs_TSwLvDsxfrSXMHWOq1b2F1s3B7aDY2d0_K3xaT3hQyPQ1dHQQew9QkrJ5ve2f1E93eOstYjx1rG-6bf7R_nUmBkp9xAZMuqYVWKbWePs8lDvxqes3zjk1Qeylj4hJlSxlvefIUa64GMfORzTW5NePyaIpzbCsyDexK8q0W77AUhwjNKRma8QzB9143twYXn_gG3tXH1D6ov9P5tM" />
-                                        </div>
-                                        <span className="text-sm text-slate-700 dark:text-slate-300">Maria Santos</span>
-                                    </div>
-                                </td>
-                                <td className="px-6 py-4">
-                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
-                                        Draft
-                                    </span>
-                                </td>
-                                <td className="px-6 py-4 text-right">
-                                    <div className="flex items-center justify-end gap-1">
-                                        <button className="p-2 text-slate-400 hover:text-primary transition-colors">
-                                            <span className="material-symbols-outlined text-[20px]">visibility</span>
-                                        </button>
-                                        <button className="p-2 text-slate-400 hover:text-primary transition-colors">
-                                            <span className="material-symbols-outlined text-[20px]">download</span>
-                                        </button>
-                                        <button className="p-2 text-slate-400 hover:text-primary transition-colors">
-                                            <span className="material-symbols-outlined text-[20px]">share</span>
-                                        </button>
-                                        <button className="p-2 text-slate-400 hover:text-primary transition-colors">
-                                            <span className="material-symbols-outlined text-[20px]">more_vert</span>
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
+                {loading ? (
+                    <div className="flex justify-center p-10"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>
+                ) : (
+                    <div className="bg-white dark:bg-background-dark rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-800">
+                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider w-1/3">Nombre del Archivo</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Fecha Carga</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Autor</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Estado</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                                {documents.length === 0 ? (
+                                    <tr><td colSpan={5} className="px-6 py-8 text-center text-slate-500">No se encontraron documentos.</td></tr>
+                                ) : (
+                                    documents.map((doc) => (
+                                        <tr key={doc.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group">
+                                            <td className="px-6 py-4">
+                                                <div className="flex items-center gap-3">
+                                                    <span className="material-symbols-outlined text-red-500">picture_as_pdf</span>
+                                                    <div>
+                                                        <p className="text-sm font-bold text-slate-900 dark:text-white cursor-pointer hover:text-primary" onClick={() => handleViewDocument(doc.id)}>{doc.title}</p>
+                                                        <p className="text-xs text-slate-500">{doc.type_name}</p>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">
+                                                {new Date(doc.created_at).toLocaleDateString()}
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="size-6 rounded-full bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-600">
+                                                        {doc.uploader_name?.substring(0, 2).toUpperCase()}
+                                                    </div>
+                                                    <span className="text-sm text-slate-700 dark:text-slate-300">{doc.uploader_name}</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold 
+                                                    ${doc.status === 'APPROVED' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                                                        doc.status === 'DRAFT' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
+                                                            'bg-slate-100 text-slate-600'}`}>
+                                                    {doc.status}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 text-right">
+                                                <div className="flex items-center justify-end gap-1">
+                                                    <button onClick={() => handleViewDocument(doc.id)} className="p-2 text-slate-400 hover:text-primary transition-colors" title="Ver Documento">
+                                                        <span className="material-symbols-outlined text-[20px]">visibility</span>
+                                                    </button>
+                                                    <button className="p-2 text-slate-400 hover:text-primary transition-colors">
+                                                        <span className="material-symbols-outlined text-[20px]">download</span>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
 
-                {/* Pagination */}
+                {/* Pagination (Static for now) */}
                 <div className="mt-6 flex items-center justify-between">
-                    <p className="text-sm text-slate-500">Showing <span className="font-bold text-slate-900 dark:text-white">1</span> to <span className="font-bold text-slate-900 dark:text-white">10</span> of <span className="font-bold text-slate-900 dark:text-white">152</span> documents</p>
+                    <p className="text-sm text-slate-500">Mostrando <span className="font-bold text-slate-900 dark:text-white">{documents.length}</span> documentos</p>
                     <div className="flex items-center gap-2">
                         <button className="px-3 py-1 bg-white dark:bg-background-dark border border-slate-200 dark:border-slate-800 rounded-lg text-sm text-slate-400 disabled:opacity-50" disabled>
-                            Previous
+                            Anterior
                         </button>
-                        <button className="size-8 bg-primary text-slate-900 rounded-lg text-sm font-bold flex items-center justify-center">1</button>
-                        <button className="size-8 bg-white dark:bg-background-dark border border-slate-200 dark:border-slate-800 rounded-lg text-sm font-medium hover:border-primary">2</button>
-                        <button className="size-8 bg-white dark:bg-background-dark border border-slate-200 dark:border-slate-800 rounded-lg text-sm font-medium hover:border-primary">3</button>
-                        <span className="px-1">...</span>
-                        <button className="size-8 bg-white dark:bg-background-dark border border-slate-200 dark:border-slate-800 rounded-lg text-sm font-medium hover:border-primary">16</button>
-                        <button className="px-3 py-1 bg-white dark:bg-background-dark border border-slate-200 dark:border-slate-800 rounded-lg text-sm text-slate-700 dark:text-slate-300">
-                            Next
+                        <button className="px-3 py-1 bg-white dark:bg-background-dark border border-slate-200 dark:border-slate-800 rounded-lg text-sm text-slate-700 dark:text-slate-300 disabled:opacity-50" disabled>
+                            Siguiente
                         </button>
                     </div>
                 </div>

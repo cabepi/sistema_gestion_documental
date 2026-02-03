@@ -1,12 +1,41 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import { apiClient } from '../../api/client';
 
 export const ViewerAndHistory: React.FC = () => {
+    const [searchParams] = useSearchParams();
+    const docId = searchParams.get('id');
+    const navigate = useNavigate();
+    const [document, setDocument] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchDocument = async () => {
+            if (!docId) return;
+            try {
+                const res = await apiClient.get(`/documents/${docId}`);
+                setDocument(res.data);
+            } catch (error) {
+                console.error('Error fetching document:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchDocument();
+    }, [docId]);
+
+    const handleBack = () => navigate(-1);
+
+    if (loading) return <div className="min-h-screen flex items-center justify-center dark:bg-background-dark dark:text-white">Cargando documento...</div>;
+    if (!document) return <div className="min-h-screen flex items-center justify-center dark:bg-background-dark dark:text-white">Documento no encontrado o ID inválido.</div>;
+
     return (
         <div className="bg-background-light dark:bg-background-dark text-[#111718] dark:text-white min-h-screen flex flex-col font-display">
             {/* Top Navigation Bar */}
             <header className="flex items-center justify-between whitespace-nowrap border-b border-solid border-[#e5e7eb] dark:border-[#2a3c3f] bg-white dark:bg-[#111718] px-10 py-3 sticky top-0 z-50">
                 <div className="flex items-center gap-8">
-                    <div className="flex items-center gap-4 text-[#111718] dark:text-white">
+                    <div className="flex items-center gap-4 text-[#111718] dark:text-white cursor-pointer" onClick={() => navigate('/dashboard')}>
                         <div className="size-6 text-primary">
                             <span className="material-symbols-outlined text-3xl">account_balance</span>
                         </div>
@@ -15,26 +44,14 @@ export const ViewerAndHistory: React.FC = () => {
                             <span className="text-[10px] uppercase tracking-wider text-[#618389]">Ministerio de Cultura de Panamá</span>
                         </div>
                     </div>
-                    <label className="flex flex-col min-w-40 !h-10 max-w-64">
-                        <div className="flex w-full flex-1 items-stretch rounded-lg h-full">
-                            <div className="text-[#618389] flex border-none bg-[#f0f4f4] dark:bg-[#1a2e31] items-center justify-center pl-4 rounded-l-lg border-r-0">
-                                <span className="material-symbols-outlined text-xl">search</span>
-                            </div>
-                            <input className="flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-[#111718] dark:text-white focus:outline-0 focus:ring-0 border-none bg-[#f0f4f4] dark:bg-[#1a2e31] focus:border-none h-full placeholder:text-[#618389] px-4 rounded-l-none border-l-0 pl-2 text-sm font-normal" placeholder="Buscar expedientes..." />
-                        </div>
-                    </label>
                 </div>
                 <div className="flex flex-1 justify-end gap-6 items-center">
-                    <nav className="flex items-center gap-8">
-                        <a href="#" className="text-[#111718] dark:text-white text-sm font-medium leading-normal hover:text-primary transition-colors">Documentos</a>
-                        <a href="#" className="text-[#111718] dark:text-white text-sm font-medium leading-normal hover:text-primary transition-colors">Bandeja de Entrada</a>
-                        {/* ... */}
-                    </nav>
-                    <div className="h-6 w-px bg-[#e5e7eb] dark:border-[#2a3c3f]"></div>
-                    <button className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-primary text-[#111718] text-sm font-bold leading-normal tracking-[0.015em] hover:bg-opacity-90 transition-all">
-                        <span className="truncate font-display">M. Arango</span>
+                    <button onClick={handleBack} className="text-[#111718] dark:text-white text-sm font-medium leading-normal hover:text-primary transition-colors flex items-center gap-1">
+                        <span className="material-symbols-outlined text-lg">arrow_back</span>
+                        Volver
                     </button>
-                    <div className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10 border-2 border-primary" style={{ backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuCCitToaYvzDzFFTIubdwhMP2JzcDiSbln318e3DUCN6cJUM-hrE320f6AwLuCYbirPz-mWlrA-edGgH8aHGhdacazTWPMS6d7X9TjlzDPcnu8FWz-U87asKkZcwwBpxqXFgYEBzvh7zG05tdB28aytFein686So4FkmiCl6ebGd87AOGKLJra86adMrzrPEVeaAIb9XyBb1zVMfrkx7C8BE-2iBp7YLuSI0bkSsUkuczBuOdf5EGg1hS39-zw3zHolrbWKZa1nKCs')" }}></div>
+                    <div className="h-6 w-px bg-[#e5e7eb] dark:border-[#2a3c3f]"></div>
+                    <span className="font-bold text-sm bg-primary/10 text-primary px-3 py-1 rounded">{document.status}</span>
                 </div>
             </header>
 
@@ -42,13 +59,11 @@ export const ViewerAndHistory: React.FC = () => {
             <div className="bg-white dark:bg-[#111718] border-b border-[#e5e7eb] dark:border-[#2a3c3f] px-10 py-3 flex items-center justify-between">
                 <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2 text-[#618389] text-sm">
-                        <a href="#" className="hover:text-primary">Inicio</a>
+                        <span className="hover:text-primary cursor-pointer" onClick={() => navigate('/dashboard')}>Inicio</span>
                         <span className="material-symbols-outlined text-xs">chevron_right</span>
-                        <a href="#" className="hover:text-primary">Patrimonio Histórico</a>
-                        <span className="material-symbols-outlined text-xs">chevron_right</span>
-                        <span className="text-[#111718] dark:text-white font-medium">PH-2024-EXP-088.pdf</span>
+                        <span className="text-[#111718] dark:text-white font-medium">{document.title}</span>
                     </div>
-                    <span className="bg-primary/20 text-primary text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wide">Borrador</span>
+                    <span className="bg-primary/20 text-primary text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wide">{document.type_name}</span>
                 </div>
                 <div className="flex items-center gap-2">
                     <button className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-red-500 border border-red-200 hover:bg-red-50 transition-colors text-sm font-medium">
@@ -71,27 +86,24 @@ export const ViewerAndHistory: React.FC = () => {
                         <div className="flex items-center justify-between p-4 border-b border-[#e5e7eb] dark:border-[#2a3c3f]">
                             <div className="flex items-center gap-3">
                                 <span className="material-symbols-outlined text-primary">description</span>
-                                <h3 className="font-bold text-[#111718] dark:text-white">PH-2024-EXP-088.pdf</h3>
+                                <h3 className="font-bold text-[#111718] dark:text-white">{document.title}</h3>
                             </div>
+                            <a href={document.file_url} target="_blank" rel="noreferrer" className="text-primary hover:underline text-sm font-medium flex items-center gap-1">
+                                <span className="material-symbols-outlined text-lg">open_in_new</span>
+                                Abrir Original
+                            </a>
                         </div>
                         {/* Canvas Placeholder */}
                         <div className="flex-1 bg-gray-200 dark:bg-gray-900 m-8 rounded border-dashed border-2 border-gray-300 dark:border-gray-700 flex items-center justify-center overflow-hidden">
-                            <div className="relative w-[500px] h-[700px] bg-white shadow-2xl p-12">
-                                {/* Document Content */}
-                                <div className="flex justify-between items-start mb-12">
-                                    <div className="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center">
-                                        <span className="material-symbols-outlined text-primary text-3xl">account_balance</span>
-                                    </div>
-                                    <div className="text-right text-[10px] text-gray-400 uppercase tracking-widest">República de Panamá<br />Ministerio de Cultura</div>
+                            {document.file_url ? (
+                                <iframe src={document.file_url} className="w-full h-full" title="Document Preview" />
+                            ) : (
+                                <div className="text-center p-8">
+                                    <span className="material-symbols-outlined text-6xl text-gray-400 mb-4">picture_as_pdf</span>
+                                    <p className="text-gray-500 font-medium">Previsualización no disponible</p>
                                 </div>
-                                <div className="space-y-3">
-                                    <div className="h-3 bg-gray-100 w-full"></div>
-                                    <div className="h-3 bg-gray-100 w-full"></div>
-                                    <div className="h-3 bg-gray-100 w-2/3"></div>
-                                </div>
-                            </div>
+                            )}
                         </div>
-                        {/* Collaboration Section ... */}
                     </div>
                 </div>
 
@@ -100,7 +112,6 @@ export const ViewerAndHistory: React.FC = () => {
                     <div className="flex border-b border-[#e5e7eb] dark:border-[#2a3c3f] px-4 pt-4">
                         <button className="flex-1 pb-3 text-sm font-medium border-b-2 border-primary text-[#111718] dark:text-white">Detalles</button>
                         <button className="flex-1 pb-3 text-sm font-medium border-b-2 border-transparent text-[#618389]">Historial</button>
-                        <button className="flex-1 pb-3 text-sm font-medium border-b-2 border-transparent text-[#618389]">Auditoría</button>
                     </div>
                     <div className="flex-1 overflow-y-auto p-6 space-y-8 scrollbar-hide">
                         <section>
@@ -108,9 +119,21 @@ export const ViewerAndHistory: React.FC = () => {
                             <div className="space-y-4">
                                 <div>
                                     <p className="text-xs text-[#618389] mb-1">Tipo de Documento</p>
-                                    <p className="text-sm font-medium">Resolución Administrativa</p>
+                                    <p className="text-sm font-medium text-slate-900 dark:text-white">{document.type_name}</p>
                                 </div>
-                                {/* ... */}
+                                <div>
+                                    <p className="text-xs text-[#618389] mb-1">Fecha de Creación</p>
+                                    <p className="text-sm font-medium text-slate-900 dark:text-white">{new Date(document.created_at).toLocaleString()}</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-[#618389] mb-1">Autor / Cargado por</p>
+                                    <p className="text-sm font-medium text-slate-900 dark:text-white">{document.uploader_name}</p>
+                                    <p className="text-xs text-slate-500">{document.uploader_department}</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-[#618389] mb-1">Descripción</p>
+                                    <p className="text-sm text-slate-700 dark:text-slate-300">{document.description || 'Sin descripción'}</p>
+                                </div>
                             </div>
                         </section>
                     </div>

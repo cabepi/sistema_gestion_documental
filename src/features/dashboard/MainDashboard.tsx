@@ -1,6 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { apiClient } from '../../api/client';
+import { useNavigate } from 'react-router-dom';
 
 interface DashboardMetrics {
     totalDocuments: number;
@@ -25,6 +26,7 @@ export const MainDashboard: React.FC = () => {
     const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
     const [tasks, setTasks] = useState<Task[]>([]);
     const [loading, setLoading] = useState(true);
+    const navigate = useNavigate();
 
     useEffect(() => {
         const fetchDashboardData = async () => {
@@ -144,7 +146,10 @@ export const MainDashboard: React.FC = () => {
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                             {tasks.map((task) => (
-                                <tr key={task.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors group">
+                                <tr key={task.id}
+                                    className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors group cursor-pointer"
+                                    onClick={() => navigate(`/viewer?id=${task.id}`)} // Use task ID mapping logic if doc ID differs
+                                >
                                     <td className="px-6 py-4">
                                         <div className="flex items-center gap-3">
                                             <span className="material-symbols-outlined text-slate-400 group-hover:text-institutional-navy">description</span>

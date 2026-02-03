@@ -15,6 +15,8 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 import dashboardRoutes from './routes/dashboardRoutes.js';
 app.use('/api/dashboard', dashboardRoutes);
+import documentRoutes from './routes/documentRoutes.js';
+app.use('/api/documents', documentRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
