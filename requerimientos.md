@@ -25,6 +25,17 @@ Este documento detalla las funcionalidades, flujos básicos y alternos para cada
 - **Credenciales Inválidas:** El sistema muestra un mensaje de error ("Usuario o contraseña incorrectos") y mantiene al usuario en la pantalla de login.
 - **Olvidó Contraseña:** El usuario hace clic en "¿Olvidó su contraseña?", el sistema (en una fase futura) iniciaría el flujo de recuperación.
 
+### Cierre de Sesión (Logout)
+- **Funcionalidad:** Botón disponible en el menú lateral para cerrar la sesión actual.
+- **Comportamiento:**
+    1. El usuario hace clic en "Cerrar Sesión".
+    2. El sistema elimina el token de seguridad y datos del usuario (localStorage).
+    3. El sistema redirige inmediatamente a la pantalla de Login.
+
+### Seguridad y Rutas Protegidas
+- **Regla General:** Todas las pantallas internas (Dashboard, Documentos, Admin) están protegidas.
+- **Comportamiento:** Si un usuario intenta acceder a una URL directa sin un token válido, el sistema lo redirige automáticamente al Login.
+
 ---
 
 ## 2. Dashboard Principal (Main Dashboard)
@@ -35,14 +46,18 @@ Este documento detalla las funcionalidades, flujos básicos y alternos para cada
 ### Funcionalidades
 - Visualización de métricas generales (Total Documentos, Pendientes, Nuevas Cargas).
 - Bandeja de Entrada "Resumida" con tareas prioritarias.
+- **Lógica de Roles:**
+    - **Administrador:** Visualiza TODAS las tareas pendientes del sistema.
+    - **Usuario Estándar:** Visualiza únicamente las tareas asignadas a su usuario.
 - Accesos rápidos a módulos del sistema.
 
 ### Flujo Básico
 1. El usuario accede al Dashboard.
-2. El sistema carga las métricas actualizadas y las tareas asignadas al usuario.
-3. El usuario revisa la información.
-4. El usuario hace clic en una tarea de la bandeja.
-5. El sistema redirige a la pantalla de **Visor de Documentos** o **Detalle de Tarea**.
+2. El sistema verifica el rol del usuario (Admin vs Usuario).
+3. El sistema carga las métricas y la lista de tareas correspondiente.
+4. El usuario revisa la información.
+5. El usuario hace clic en una tarea de la bandeja.
+6. El sistema redirige a la pantalla de **Visor de Documentos** o **Detalle de Tarea**.
 
 ---
 

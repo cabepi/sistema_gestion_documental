@@ -1,13 +1,43 @@
-import React from 'react';
+
+import React, { useState } from 'react';
+import { apiClient } from '../../api/client';
+import { useNavigate } from 'react-router-dom';
 
 export const Login: React.FC = () => {
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
+    const navigate = useNavigate();
+
+    const handleLogin = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError('');
+        setLoading(true);
+
+        try {
+            const response = await apiClient.post('/auth/login', { email, password });
+            const { token, user } = response.data;
+
+            // Save auth data
+            localStorage.setItem('token', token);
+            localStorage.setItem('user', JSON.stringify(user));
+
+            navigate('/dashboard');
+        } catch (err: any) {
+            setError(err.response?.data?.message || 'Error al iniciar sesión');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <div className="relative w-full min-h-screen flex flex-col md:flex-row overflow-hidden bg-background-light dark:bg-background-dark">
             {/* Left Panel */}
             <div className="hidden md:flex md:w-1/2 lg:w-3/5 relative bg-institutional-navy items-end p-12 overflow-hidden">
                 <div
                     className="absolute inset-0 bg-cover bg-center"
-                    style={{ backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuBd5daJeTkYiThaPqv7Ewq7_vTNRsSMRw_OOxZXw6XVMAliuhnZdmnKPfcN3kgb_puKUcwQimXBtJtwUVbJTEM33jvafEWN7LmQmUxcfoQgVtoU8X01Vxhko-tQFe_1zK5SAL2Z3YWePlnAI3OpidiPkm417Bw1p7hFcA-h0VMzDCOoqXzC10au4eVZFJftN2yyZYaipkjF5FYdujrBpoyNTrNfvMaozPka-XDasm7PSoBpJz7uvSqUt9gX8vGpc6Q6YL7pZ53LbAA')" }}
+                    style={{ backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuBd5daJeTkYiThaPqv7Ewq7_vTNRsSMRw_OOxZXw6XVMAliuhnZdmnKPfcN3kgb_puKUcwQimXBtJtwUVbJTEM33jvafEWN7LmQmXxcfoQgVtoU8X01Vxhko-tQFe_1zK5SAL2Z3YWePlnAI3OpidiPkm417Bw1p7hFcA-h0VMzDCOoqXzC10au4eVZFJftN2yyZYaipkjF5FYdujrBpoyNTrNfvMaozPka-XDasm7PSoBpJz7uvSqUt9gX8vGpc6Q6YL7pZ53LbAA')" }}
                 ></div>
                 <div className="absolute inset-0 bg-institutional-navy/80 bg-gradient-to-t from-institutional-navy/90 to-institutional-navy/40"></div>
                 <div className="relative z-10 text-white max-w-lg">
@@ -53,12 +83,25 @@ export const Login: React.FC = () => {
                             <div className="flex-grow border-t border-gray-200 dark:border-gray-700"></div>
                         </div>
 
-                        <form action="#" className="space-y-6">
+                        {error && (
+                            <div className="p-3 bg-red-50 text-red-600 text-sm rounded-lg border border-red-200 animate-pulse">
+                                {error}
+                            </div>
+                        )}
+
+                        <form onSubmit={handleLogin} className="space-y-6">
                             <div>
                                 <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Usuario o Correo Institucional</label>
                                 <div className="relative">
                                     <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">mail</span>
-                                    <input className="w-full pl-12 pr-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-primary-dark/20 focus:border-primary-dark outline-none transition-all dark:text-white" placeholder="ej. j.perez@micultura.gob.pa" type="text" />
+                                    <input
+                                        className="w-full pl-12 pr-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-primary-dark/20 focus:border-primary-dark outline-none transition-all dark:text-white"
+                                        placeholder="ej. admin@micultura.gob.pa"
+                                        type="email"
+                                        value={email}
+                                        onChange={(e) => setEmail(e.target.value)}
+                                        required
+                                    />
                                 </div>
                             </div>
                             <div>
@@ -68,7 +111,14 @@ export const Login: React.FC = () => {
                                 </div>
                                 <div className="relative">
                                     <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">lock</span>
-                                    <input className="w-full pl-12 pr-12 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-primary-dark/20 focus:border-primary-dark outline-none transition-all dark:text-white" placeholder="••••••••" type="password" />
+                                    <input
+                                        className="w-full pl-12 pr-12 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-primary-dark/20 focus:border-primary-dark outline-none transition-all dark:text-white"
+                                        placeholder="••••••••"
+                                        type="password"
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        required
+                                    />
                                     <button type="button" className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
                                         <span className="material-symbols-outlined">visibility</span>
                                     </button>
@@ -78,9 +128,19 @@ export const Login: React.FC = () => {
                                 <input id="remember" type="checkbox" className="w-4 h-4 text-primary-dark border-gray-300 rounded focus:ring-primary-dark" />
                                 <label htmlFor="remember" className="ml-2 text-sm text-gray-600 dark:text-gray-400">Recordar este dispositivo</label>
                             </div>
-                            <button type="submit" className="w-full py-3.5 bg-primary-dark hover:bg-blue-700 text-white font-bold rounded-lg shadow-md shadow-primary-dark/20 transition-all flex items-center justify-center gap-2">
-                                <span>Ingresar al Sistema</span>
-                                <span className="material-symbols-outlined text-lg">login</span>
+                            <button
+                                type="submit"
+                                disabled={loading}
+                                className="w-full py-3.5 bg-primary-dark hover:bg-blue-700 text-white font-bold rounded-lg shadow-md shadow-primary-dark/20 transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                            >
+                                {loading ? (
+                                    <span>Ingresando...</span>
+                                ) : (
+                                    <>
+                                        <span>Ingresar al Sistema</span>
+                                        <span className="material-symbols-outlined text-lg">login</span>
+                                    </>
+                                )}
                             </button>
                         </form>
                     </div>
@@ -108,3 +168,4 @@ export const Login: React.FC = () => {
         </div>
     );
 };
+
