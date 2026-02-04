@@ -1,161 +1,277 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { apiClient } from '../../api/client';
+import { useNavigate } from 'react-router-dom';
 
 export const UploadAndIndexing: React.FC = () => {
+    const navigate = useNavigate();
+    const [file, setFile] = useState<File | null>(null);
+    const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+    const [ocrProgress, setOcrProgress] = useState(0);
+    const [ocrStatus, setOcrStatus] = useState<'idle' | 'processing' | 'completed'>('idle');
+    const [isDragging, setIsDragging] = useState(false);
+
+    // Form State
+    const [docType, setDocType] = useState('MEMORANDO'); // Default to a known code
+    const [title, setTitle] = useState('');
+    const [description, setDescription] = useState('');
+    const [docDate, setDocDate] = useState(new Date().toISOString().split('T')[0]);
+
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const handleDragOver = (e: React.DragEvent) => {
+        e.preventDefault();
+        setIsDragging(true);
+    };
+
+    const handleDragLeave = (e: React.DragEvent) => {
+        e.preventDefault();
+        setIsDragging(false);
+    };
+
+    const handleDrop = (e: React.DragEvent) => {
+        e.preventDefault();
+        setIsDragging(false);
+        const droppedFile = e.dataTransfer.files[0];
+        if (droppedFile && droppedFile.type === 'application/pdf') {
+            handleFileSelection(droppedFile);
+        } else {
+            alert('Por favor, sube un archivo PDF válido.');
+        }
+    };
+
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            handleFileSelection(e.target.files[0]);
+        }
+    };
+
+    const handleFileSelection = (selectedFile: File) => {
+        setFile(selectedFile);
+        setPreviewUrl(URL.createObjectURL(selectedFile));
+        startSimulatedOCR();
+
+        // Auto-fill title based on filename (minus extension)
+        const name = selectedFile.name.replace(/\.[^/.]+$/, "");
+        setTitle(name.split('_').join(' ').replace(/\b\w/g, l => l.toUpperCase()));
+    };
+
+    const startSimulatedOCR = () => {
+        setOcrStatus('processing');
+        setOcrProgress(0);
+
+        let progress = 0;
+        const interval = setInterval(() => {
+            progress += Math.floor(Math.random() * 10) + 5;
+            if (progress >= 100) {
+                progress = 100;
+                clearInterval(interval);
+                setOcrStatus('completed');
+            }
+            setOcrProgress(progress);
+        }, 300);
+    };
+
+    const handleDiscard = () => {
+        setFile(null);
+        setPreviewUrl(null);
+        setOcrStatus('idle');
+        setOcrProgress(0);
+        setTitle('');
+        setDescription('');
+    };
+
+    const handleFinalize = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!file) return;
+
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('title', title);
+            formData.append('description', description);
+            formData.append('document_type_code', docType);
+            formData.append('created_at', docDate);
+
+            // TODO: Ensure backend endpoint handles this
+            await apiClient.post('/documents', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
+            });
+
+            alert('Documento guardado e indexado exitosamente.');
+            navigate('/documents'); // Redirect to explorer
+        } catch (error) {
+            console.error('Error uploading document:', error);
+            alert('Error al guardar el documento.');
+        }
+    };
+
     return (
-        <div className="flex flex-col h-screen bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-display">
-            <header className="flex items-center justify-between border-b border-solid border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-8 py-3 shrink-0">
-                <div className="flex items-center gap-8">
-                    <div className="flex items-center gap-3 text-primary">
-                        <div className="size-8 bg-primary rounded-lg flex items-center justify-center text-white">
-                            <span className="material-symbols-outlined">account_balance</span>
-                        </div>
-                        <div className="flex flex-col">
-                            <h2 className="text-slate-900 dark:text-white text-lg font-bold leading-tight tracking-tight">MiCultura SGD</h2>
-                            <p className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">República de Panamá</p>
-                        </div>
-                    </div>
-                    <nav className="flex items-center gap-6 ml-4">
-                        <a href="#" className="text-slate-600 dark:text-slate-400 text-sm font-medium hover:text-primary transition-colors">Dashboard</a>
-                        <a href="#" className="text-primary text-sm font-semibold border-b-2 border-primary py-1">Documents</a>
-                        <a href="#" className="text-slate-600 dark:text-slate-400 text-sm font-medium hover:text-primary transition-colors">Archive</a>
-                        <a href="#" className="text-slate-600 dark:text-slate-400 text-sm font-medium hover:text-primary transition-colors">Reports</a>
-                    </nav>
-                </div>
-                <div className="flex flex-1 justify-end gap-4 items-center">
-                    <div className="relative w-64">
-                        <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">search</span>
-                        <input className="w-full h-10 pl-10 pr-4 rounded-lg border-none bg-slate-100 dark:bg-slate-800 text-sm focus:ring-2 focus:ring-primary outline-none" placeholder="Search archives..." type="text" />
-                    </div>
-                    <button className="size-10 flex items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200">
-                        <span className="material-symbols-outlined">notifications</span>
-                    </button>
-                    <div className="h-10 w-[1px] bg-slate-200 dark:bg-slate-700 mx-2"></div>
-                    <div className="flex items-center gap-3">
-                        <div className="text-right hidden md:block">
-                            <p className="text-sm font-bold leading-none">Admin User</p>
-                            <p className="text-xs text-slate-500">National Archive</p>
-                        </div>
-                        <div className="bg-primary/20 rounded-full size-10 flex items-center justify-center overflow-hidden border-2 border-primary/30">
-                            <img className="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA0GLodgjgydBwlFGQR5FXSHRas6OnJovFdk7rRiUr8i-Jw47HXSW1z_0Q5HKgmoPTDfS9xFXznbWcHQ8vEANh-2jD9WnXvQdDzaFNN6NfRcbr797uTB5bNUNXKpZbAtRQ5H0skzQJwmwUtQ7mIlNOU0HWZVUGV9y6fYoDx-A-Ee2KraHH5-AXt40k6WEpGLFBjVDo8t6FuaXnAIVWE2_THCyZ38Vw2Id0BXe0lnc6ZcGhK3NNldMj7Hlx7xHxz6Yl1Pduv6g1T8cg" alt="User" />
-                        </div>
-                    </div>
-                </div>
-            </header>
+        <div className="flex flex-col h-full bg-slate-50 dark:bg-black/5 text-slate-900 dark:text-slate-100 font-display">
+            {/* Header is handled by MainLayout if used, but preserving standalone structure for now as per previous file */}
 
-            <main className="flex flex-1 overflow-hidden">
-                {/* Sidebar Navigation */}
-                <aside className="w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col p-4 gap-2 shrink-0">
-                    <p className="px-3 py-2 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Document Tools</p>
-                    <a href="#" className="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg">
-                        <span className="material-symbols-outlined">home</span>
-                        <span className="text-sm font-medium">Home</span>
-                    </a>
-                    <a href="#" className="flex items-center gap-3 px-3 py-2 bg-primary/10 text-primary rounded-lg">
-                        <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>cloud_upload</span>
-                        <span className="text-sm font-bold">Upload & Indexing</span>
-                    </a>
-                    <a href="#" className="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg">
-                        <span className="material-symbols-outlined">description</span>
-                        <span className="text-sm font-medium">Recent Documents</span>
-                    </a>
-                    <a href="#" className="flex items-center gap-3 px-3 py-2 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg">
-                        <span className="material-symbols-outlined">settings</span>
-                        <span className="text-sm font-medium">System Settings</span>
-                    </a>
-                    <div className="mt-auto p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700">
-                        <p className="text-xs font-bold text-slate-600 dark:text-slate-300">Storage Status</p>
-                        <div className="w-full bg-slate-200 dark:bg-slate-700 h-1.5 rounded-full mt-2 overflow-hidden">
-                            <div className="bg-primary h-full w-[65%]"></div>
+            <main className="flex flex-1 overflow-hidden p-6 gap-6">
+                {/* Left Side: Upload / Preview */}
+                <div className={`flex-1 flex flex-col bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden relative transition-all ${isDragging ? 'ring-4 ring-primary/20 border-primary' : ''}`}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                >
+                    {!file ? (
+                        <div className="flex-1 flex flex-col items-center justify-center p-10 text-center">
+                            <div className="size-20 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center text-slate-400 mb-6">
+                                <span className="material-symbols-outlined text-[40px]">cloud_upload</span>
+                            </div>
+                            <h3 className="text-xl font-bold text-slate-700 dark:text-slate-200 mb-2">Arrastra y suelta tu PDF aquí</h3>
+                            <p className="text-slate-500 mb-8 max-w-md">Soporta archivos PDF de hasta 20MB. El sistema procesará automáticamente el texto mediante OCR.</p>
+                            <button
+                                onClick={() => fileInputRef.current?.click()}
+                                className="px-6 py-3 bg-primary text-white font-bold rounded-lg shadow-lg shadow-primary/20 hover:opacity-90 transition-all"
+                            >
+                                Seleccionar Archivo
+                            </button>
+                            <input
+                                type="file"
+                                ref={fileInputRef}
+                                className="hidden"
+                                accept="application/pdf"
+                                onChange={handleFileSelect}
+                            />
                         </div>
-                        <p className="text-[10px] mt-2 text-slate-500">12.4 GB of 20 GB used</p>
-                    </div>
-                </aside>
-
-                {/* Main Content Area */}
-                <div className="flex-1 flex flex-col overflow-hidden bg-background-light dark:bg-background-dark">
-                    {/* Breadcrumbs */}
-                    <nav className="px-8 py-3 flex items-center gap-2 text-xs font-medium border-b border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 backdrop-blur-md">
-                        <a href="#" className="text-slate-500 hover:text-primary">Documents</a>
-                        <span className="material-symbols-outlined text-[14px] text-slate-400">chevron_right</span>
-                        <span className="text-slate-900 dark:text-white">OCR Ingestion & Indexing</span>
-                    </nav>
-
-                    <div className="flex flex-1 overflow-hidden p-6 gap-6">
-                        {/* Left Side: PDF Preview */}
-                        <div className="flex-1 flex flex-col bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
-                            <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                    ) : (
+                        <>
+                            <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-900 z-10">
                                 <div className="flex items-center gap-3">
                                     <span className="material-symbols-outlined text-red-500">picture_as_pdf</span>
-                                    <h3 className="font-bold text-slate-800 dark:text-slate-100">manuscrito_historico_1821.pdf</h3>
+                                    <h3 className="font-bold text-slate-800 dark:text-slate-100 truncate max-w-[300px]">{file.name}</h3>
                                 </div>
                                 <div className="flex gap-2">
-                                    <button className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded"><span className="material-symbols-outlined text-slate-500">zoom_in</span></button>
-                                    <button className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded"><span className="material-symbols-outlined text-slate-500">zoom_out</span></button>
-                                    <button className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded"><span className="material-symbols-outlined text-slate-500">download</span></button>
+                                    <button onClick={handleDiscard} className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded text-slate-500" title="Cancelar">
+                                        <span className="material-symbols-outlined">close</span>
+                                    </button>
                                 </div>
                             </div>
-                            <div className="flex-1 bg-slate-200 dark:bg-slate-950 p-8 flex justify-center overflow-auto">
-                                {/* Simulated PDF Page */}
-                                <div className="w-full max-w-[600px] h-[842px] bg-white shadow-2xl p-12 relative flex flex-col gap-6">
-                                    <div className="absolute top-0 left-0 w-full h-full pointer-events-none opacity-20 bg-[url('https://www.transparenttextures.com/patterns/old-paper.png')]"></div>
-                                    <div className="border-b-2 border-slate-900/10 pb-4 text-center">
-                                        <p className="font-serif italic text-slate-400">Gobierno de Panamá - Registro Civil</p>
-                                    </div>
-                                    {/* Content placeholders */}
-                                    <div className="space-y-4">
-                                        <div className="h-6 bg-slate-100 rounded w-3/4"></div>
-                                        <div className="h-4 bg-slate-50 rounded w-full"></div>
-                                        <div className="h-4 bg-slate-50 rounded w-full"></div>
-                                        <div className="h-4 bg-slate-50 rounded w-5/6"></div>
-                                    </div>
-                                </div>
+                            <div className="flex-1 bg-slate-200 dark:bg-slate-950 p-4 flex justify-center overflow-auto">
+                                {previewUrl && (
+                                    <iframe
+                                        src={previewUrl}
+                                        className="w-full h-full max-w-[800px] shadow-2xl rounded-lg bg-white"
+                                        title="PDF Preview"
+                                    />
+                                )}
                             </div>
+                        </>
+                    )}
+
+                    {/* Drag Overlay */}
+                    {isDragging && (
+                        <div className="absolute inset-0 bg-primary/10 backdrop-blur-sm flex items-center justify-center z-50 pointer-events-none">
+                            <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-xl flex flex-col items-center animate-bounce-slow">
+                                <span className="material-symbols-outlined text-primary text-[48px] mb-2">download</span>
+                                <p className="font-bold text-primary">Suelta el archivo para cargar</p>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* Right Side: Metadata Form */}
+                {file && (
+                    <div className="w-[400px] flex flex-col gap-6 overflow-y-auto animate-fade-in-right">
+                        {/* Progress Card */}
+                        <div className="bg-white dark:bg-slate-900 rounded-xl p-5 shadow-sm border border-slate-200 dark:border-slate-800">
+                            <div className="flex items-center justify-between mb-3">
+                                <p className="text-sm font-bold text-slate-800 dark:text-slate-100">Progreso de Extracción (OCR)</p>
+                                <span className={`text-xs font-bold ${ocrStatus === 'completed' ? 'text-green-500' : 'text-primary'}`}>{ocrProgress}%</span>
+                            </div>
+                            <div className="w-full h-2.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                                <div
+                                    className={`h-full rounded-full transition-all duration-300 ${ocrStatus === 'completed' ? 'bg-green-500' : 'bg-primary'}`}
+                                    style={{ width: `${ocrProgress}%` }}
+                                ></div>
+                            </div>
+                            <p className="text-[11px] text-slate-500 mt-2 flex items-center gap-1">
+                                {ocrStatus === 'completed' ? (
+                                    <>
+                                        <span className="material-symbols-outlined text-[14px] text-green-500">check_circle</span>
+                                        Extracción completada. Metadatos sugeridos.
+                                    </>
+                                ) : (
+                                    <>
+                                        <span className="material-symbols-outlined text-[14px] animate-spin">sync</span>
+                                        Procesando texto y detectando tipo...
+                                    </>
+                                )}
+                            </p>
                         </div>
 
-                        {/* Right Side: Metadata Form */}
-                        <div className="w-[450px] flex flex-col gap-6 overflow-y-auto">
-                            {/* Progress Card */}
-                            <div className="bg-white dark:bg-slate-900 rounded-xl p-5 shadow-sm border border-slate-200 dark:border-slate-800">
-                                <div className="flex items-center justify-between mb-3">
-                                    <p className="text-sm font-bold text-slate-800 dark:text-slate-100">OCR Extraction Progress</p>
-                                    <span className="text-xs font-bold text-primary">78%</span>
-                                </div>
-                                <div className="w-full h-2.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                                    <div className="h-full bg-primary rounded-full w-[78%]"></div>
-                                </div>
-                                <p className="text-[11px] text-slate-500 mt-2 flex items-center gap-1">
-                                    <span className="material-symbols-outlined text-[14px]">sync</span>
-                                    Processing text and detecting document type...
-                                </p>
-                            </div>
-                            {/* Form Card */}
-                            <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-sm border border-slate-200 dark:border-slate-800 flex-1">
-                                <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-6">Document Indexing</h3>
-                                <form className="space-y-5">
-                                    <div className="space-y-1.5">
-                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Document Type</label>
-                                        <div className="relative">
-                                            <select className="w-full h-11 pl-4 pr-10 appearance-none bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-primary focus:border-primary outline-none">
-                                                <option>Historical Manuscript</option>
-                                                <option>Official Decree</option>
-                                            </select>
-                                            <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">expand_more</span>
-                                        </div>
+                        {/* Form Card */}
+                        <div className={`bg-white dark:bg-slate-900 rounded-xl p-6 shadow-sm border border-slate-200 dark:border-slate-800 flex-1 transition-opacity duration-500 ${ocrStatus === 'completed' ? 'opacity-100' : 'opacity-50 pointer-events-none'}`}>
+                            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-6">Indexación de Documento</h3>
+                            <form className="space-y-5" onSubmit={handleFinalize}>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Tipo Documental</label>
+                                    <div className="relative">
+                                        <select
+                                            value={docType}
+                                            onChange={(e) => setDocType(e.target.value)}
+                                            className="w-full h-11 pl-4 pr-10 appearance-none bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-primary focus:border-primary outline-none"
+                                        >
+                                            <option value="MEMORANDO">Memorando</option>
+                                            <option value="RESOLUCION">Resolución</option>
+                                            <option value="CONTRATO">Contrato</option>
+                                            <option value="CARTA">Carta</option>
+                                        </select>
+                                        <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">expand_more</span>
                                     </div>
-                                    <div className="space-y-1.5">
-                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Document Title</label>
-                                        <input className="w-full h-11 px-4 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-primary focus:border-primary outline-none" type="text" defaultValue="Manuscrito de Independencia 1821" />
-                                    </div>
-                                    {/* More inputs... */}
-                                </form>
-                                <div className="mt-8 flex gap-3">
-                                    <button className="flex-1 h-11 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold rounded-lg hover:bg-slate-200 transition-colors">Discard</button>
-                                    <button className="flex-1 h-11 bg-primary text-white font-bold rounded-lg hover:opacity-90 transition-opacity shadow-lg shadow-primary/20">Finalize Indexing</button>
                                 </div>
-                            </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Título del Documento</label>
+                                    <input
+                                        className="w-full h-11 px-4 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-primary focus:border-primary outline-none"
+                                        type="text"
+                                        value={title}
+                                        onChange={(e) => setTitle(e.target.value)}
+                                        required
+                                    />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Descripción / Asunto</label>
+                                    <textarea
+                                        className="w-full h-24 p-4 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-primary focus:border-primary outline-none resize-none"
+                                        value={description}
+                                        onChange={(e) => setDescription(e.target.value)}
+                                    />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Fecha Documento</label>
+                                    <input
+                                        className="w-full h-11 px-4 bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-primary focus:border-primary outline-none"
+                                        type="date"
+                                        value={docDate}
+                                        onChange={(e) => setDocDate(e.target.value)}
+                                    />
+                                </div>
+
+                                <div className="mt-8 flex gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+                                    <button
+                                        type="button"
+                                        onClick={handleDiscard}
+                                        className="flex-1 h-11 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold rounded-lg hover:bg-slate-200 transition-colors"
+                                    >
+                                        Descartar
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className="flex-1 h-11 bg-primary text-white font-bold rounded-lg hover:opacity-90 transition-opacity shadow-lg shadow-primary/20"
+                                    >
+                                        Finalizar
+                                    </button>
+                                </div>
+                            </form>
                         </div>
                     </div>
-                </div>
+                )}
             </main>
         </div>
     );

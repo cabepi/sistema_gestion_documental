@@ -29,6 +29,7 @@ export const AppLayout: React.FC = () => {
                 <nav className="flex-1 py-6 px-3 space-y-1 overflow-y-auto">
                     <NavItem to="/dashboard" icon="dashboard" label="Panel General" isOpen={isSidebarOpen} />
                     <NavItem to="/documents" icon="folder_open" label="Documentos" isOpen={isSidebarOpen} />
+                    <NavItem to="/upload" icon="cloud_upload" label="Cargar Documento" isOpen={isSidebarOpen} />
                     <NavItem to="/inbox" icon="inbox" label="Bandeja de Entrada" isOpen={isSidebarOpen} badge="3" />
                     <NavItem to="/workflows" icon="schema" label="Flujos de Trabajo" isOpen={isSidebarOpen} />
                     <NavItem to="/reports" icon="bar_chart" label="Reportes" isOpen={isSidebarOpen} />

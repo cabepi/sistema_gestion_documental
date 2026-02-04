@@ -67,11 +67,87 @@ router.get('/', async (req, res) => {
 });
 
 import { generatePresignedUrl } from '../services/storageService.js';
+import multer from 'multer';
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import path from 'path';
 
-// ... (existing imports)
+// Multer setup for memory storage (we upload buffer to S3)
+const upload = multer({ storage: multer.memoryStorage() });
+
+const s3 = new S3Client({
+    region: process.env.AWS_REGION,
+    credentials: {
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+    },
+});
+const bucketName = process.env.S3_BUCKET_NAME;
+
+// POST /api/documents - Upload and create document
+router.post('/', upload.single('file'), async (req, res) => {
+    // 1. Validate Input
+    if (!req.file) {
+        return res.status(400).json({ message: 'No file uploaded' });
+    }
+    const { title, description, document_type_code, created_at } = req.body;
+    const userId = req.user.id; // From authMiddleware
+
+    try {
+        // 2. Upload to S3
+        const fileExtension = path.extname(req.file.originalname);
+        const uniqueKey = `uploads/${Date.now()}_${req.file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+
+        const uploadCommand = new PutObjectCommand({
+            Bucket: bucketName,
+            Key: uniqueKey,
+            Body: req.file.buffer,
+            ContentType: req.file.mimetype,
+        });
+
+        await s3.send(uploadCommand);
+
+        // Construct S3 URL (Standard format)
+        const s3Url = `https://${bucketName}.s3.${process.env.AWS_REGION}.amazonaws.com/${uniqueKey}`;
+
+        // 3. Resolve Document Type ID
+        // Note: In a real app we might cache this or pass ID from frontend.
+        const typeRes = await query('SELECT id FROM sgd.document_types WHERE code = $1', [document_type_code || 'MEMORANDO']);
+        const typeId = typeRes.rows.length > 0 ? typeRes.rows[0].id : 1; // Default to first type if not found
+
+        // 4. Insert into DB
+        const insertQuery = `
+            INSERT INTO sgd.documents 
+            (title, description, file_path, document_type_id, uploader_id, status, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5, 'DRAFT', $6, NOW())
+            RETURNING *
+        `;
+
+        // Use provided created_at or current date if valid, else NOW
+        const docDate = created_at ? new Date(created_at) : new Date();
+
+        const { rows } = await query(insertQuery, [
+            title || req.file.originalname,
+            description || '',
+            s3Url, // Storing full URL as per previous pattern
+            typeId,
+            userId,
+            docDate
+        ]);
+
+        res.status(201).json(rows[0]);
+
+    } catch (err) {
+        console.error('Error in document upload:', err);
+        res.status(500).send('Server Error during upload');
+    }
+});
+
+// ... (existing endpoints)
 
 // GET /api/documents/:id
 router.get('/:id', async (req, res) => {
+    // ... rest of the file
+
     const { id } = req.params;
     try {
         const { rows } = await query(`
