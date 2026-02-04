@@ -64,75 +64,106 @@ Este documento detalla las funcionalidades, flujos básicos y alternos para cada
 ## 3. Explorador de Documentos (Document Explorer)
 
 **Actor:** Usuario Autenticado.
-**Objetivo:** Buscar, filtrar y gestionar el repositorio de documentos.
+**Objetivo:** Buscar, filtrar y gestionar el repositorio de documentos con identificación visual rápida.
 
-### Funcionalidades
-- Listado de documentos con paginación.
-- Filtros por: Rango de Fechas, Etiquetas, Tipo de Archivo.
-- Búsqueda por texto libre.
-- Acciones por documento: Ver, Descargar, Compartir.
+### Funcionalidades Implementadas
+- **Listado de Documentos:** Tabla interactiva con columnas ordenables (Nombre, Fecha, Autor, Estado, Acciones).
+- **Identificación Visual de Tipos:**
+    - 🔴 **PDF:** Icono `picture_as_pdf` en color rojo.
+    - 🟣 **Imágenes:** Icono `image` en color morado.
+    - 🔵 **Word (`.doc`, `.docx`):** Icono `description` en color azul.
+    - 🟢 **Excel (`.xls`, `.xlsx`):** Icono `table_view` en color verde.
+- **Filtros y Búsqueda:**
+    - Barra de búsqueda por texto libre (título o descripción).
+    - Botones de filtro rápido (Filtros, Vista de Lista, Vista de Cuadrícula).
+- **Acciones Rápidas:**
+    - 👁️ **Ver:** Abre el Visor de Documentos.
+    - ⬇️ **Descargar:** Descarga directa el archivo original.
+- **Estados Visuales:** Chips de colores para estados (DRAFT: Amber, APPROVED: Green, REJECTED: Red).
 
 ### Flujo Básico
 1. El usuario navega a la sección "Documentos".
-2. El sistema lista los documentos disponibles según los permisos del usuario.
-3. El usuario aplica un filtro (ej. "Tipo: Legal").
-4. El sistema actualiza la lista.
-5. El usuario selecciona "Ver" en un documento.
-6. El sistema redirige al **Visor de Documentos**.
-
-### Flujos Alternos
-- **Sin Resultados:** Si la búsqueda no arroja coincidencias, el sistema muestra un mensaje de "No se encontraron documentos".
+2. El sistema consulta el endpoint `GET /api/documents` recuperando metadatos.
+3. El usuario identifica visualmente un Excel por su icono verde.
+4. El usuario hace clic en el nombre del archivo o el botón "Ver".
+5. El sistema redirige a `/viewer?id=XYZ`.
 
 ---
 
 ## 4. Carga e Indexación (Upload & Indexing)
 
-**Actor:** Usuario con permisos de carga (ej. Archivo Nacional, Secretaría).
-**Objetivo:** Subir nuevos documentos y asignarles metadatos (Indexación).
+**Actor:** Usuario con permisos de carga.
+**Objetivo:** Subir y clasificar documentos soportando múltiples formatos.
 
-### Funcionalidades
-- Carga de archivos (Drag & Drop o Selección).
-- Previsualización del documento cargado.
-- Extracción automática de texto (OCR simulado).
-- Formulario de metadatos (Tipo documental, Título, Fecha, etc.).
+### Funcionalidades Implementadas
+- **Formatos Soportados:**
+    - Documentos: PDF, Word (`.doc`, `.docx`), Excel (`.xls`, `.xlsx`).
+    - Imágenes: JPG, PNG, GIF, WEBP.
+- **Área de Carga (Drag & Drop):**
+    - Zona reactiva que acepta arrastrar y soltar archivos.
+    - Validación inmediata de tipos MIME permitidos.
+- **Previsualización Inteligente:**
+    - **Imágenes:** Muestra la imagen directamente.
+    - **PDF:** Muestra la primera página/visor embebido.
+    - **Office:** Muestra un placeholder con el icono e información del archivo (la vista previa completa se genera en el visor).
+- **Formulario de Metadatos:**
+    - Título (editable, por defecto el nombre del archivo).
+    - Tipo Documental (Selección de catálogo DB: RESOLUCION, MEMORANDO, FACTURA, CONTRATO, CARTA).
+    - Descripción (Opcional).
+    - Fecha de Creación (Selector de fecha).
+- **Backend Integration:** Endpoint `POST /api/documents` que:
+    1. Sube el archivo binario a AWS S3.
+    2. Genera una URL pública/firmada.
+    3. Registra la metadata en PostgreSQL (`sgd.documents`).
 
 ### Flujo Básico
-1. El usuario accede a "Carga e Indexación".
-2. El usuario selecciona un archivo PDF.
-3. El sistema carga el archivo y muestra la previsualización.
-4. El sistema ejecuta el proceso OCR (simulado) y muestra el progreso.
-5. El usuario completa o valida los metadatos en el formulario derecho.
-6. El usuario hace clic en "Finalizar Indexación".
-7. El sistema guarda el documento y sus metadatos en la base de datos "sgd".
-8. El sistema confirma el éxito y limpia el formulario.
+1. El usuario accede a "Cargar Documento".
+2. Arrastra una factura en formato `.xlsx`.
+3. El sistema valida el formato y muestra el icono de Excel.
+4. El usuario selecciona el tipo "Factura" y añade una nota.
+5. El usuario hace clic en "Indexar Documento".
+6. El sistema procesa la carga y redirige al Dashboard o Explorer.
 
 ---
 
 ## 5. Visor y Auditoría (Viewer & History)
 
 **Actor:** Usuario Autenticado (Revisores, Aprobadores).
-**Objetivo:** Analizar un documento, ver su historial y tomar acciones (Aprobar/Rechazar).
+**Objetivo:** Revisión detallada, trazabilidad completa y toma de decisiones.
 
-### Funcionalidades
-- Visualización del documento (PDF).
-- Barra de herramientas (Zoom, Descargar).
-- Panel lateral de metadatos y auditoría (Historial de versiones y accesos).
-- Botones de acción de flujo (Aprobar, Rechazar).
+### Funcionalidades Implementadas
+- **Visor Multi-Formato:**
+    - **Imágenes:** Renderizado nativo `<img>`.
+    - **PDF:** Renderizado mediante `<iframe>` nativo.
+    - **Office (Word/Excel):** Integración con **Microsoft Office Web Viewer** para renderizado fiel en el navegador.
+- **Herramientas de Visualización:**
+    - **Zoom:** Controles (+ / -) para ajustar el tamaño de visualización (Escala 50% - 300%).
+    - **Abrir Original:** Enlace directo al archivo crudo.
+- **Panel de Historial (Auditoría):**
+    - Pestaña lateral "Historial" conectada a `GET /api/documents/:id/history`.
+    - Línea de tiempo cronológica mostrando:
+        - Foto/Avatar del usuario.
+        - Acción realizada (Carga, Visualización, Aprobación, Rechazo, Actualización).
+        - Fecha y Hora exacta.
+        - Comentarios o Motivos de rechazo (si aplican).
+- **Flujo de Aprobación:**
+    - Botón **"Aprobar Documento"** (Verde).
+    - Cambia estado a `APPROVED`.
+    - Registra evento `APPROVE` en `audit_logs`.
+- **Flujo de Rechazo (Con Motivo):**
+    - Botón **"Rechazar"** (Rojo).
+    - Abre **Modal de Rechazo** bloqueante.
+    - Campo de texto obligatorio para "Motivo del rechazo".
+    - Cambia estado a `REJECTED`.
+    - Registra evento `REJECT` en `audit_logs` guardando el motivo en el campo JSON `details`.
 
-### Flujo Básico (Aprobación)
-1. El usuario abre un documento pendiente de revisión.
-2. El usuario lee el contenido en el visor.
-3. El usuario revisa el historial en el panel lateral.
-4. El usuario hace clic en "Aprobar Documento".
-5. El sistema registra la aprobación y cambia el estado del documento.
-6. El sistema notifica al siguiente responsable en el flujo.
-
-### Flujo Alterno (Rechazo)
-1. El usuario detecta un error en el documento.
-2. El usuario hace clic en "Rechazar".
-3. El sistema solicita un motivo de rechazo.
-4. El usuario ingresa el motivo y confirma.
-5. El documento regresa al estado anterior o al autor.
+### Flujo de Auditoría Técnica
+1. El usuario visualiza un documento.
+2. El sistema consulta `sgd.audit_logs`.
+3. Si el usuario aprueba, el backend ejecuta una transacción:
+    - `UPDATE sgd.documents SET status='APPROVED'`.
+    - `INSERT INTO sgd.audit_logs (action='APPROVE', ...)`
+4. El frontend refresca automáticamente la lista de historial para mostrar la nueva acción.
 
 ---
 
