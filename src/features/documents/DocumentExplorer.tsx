@@ -58,6 +58,19 @@ export const DocumentExplorer: React.FC = () => {
         }
     };
 
+    const getFileIcon = (filePath: string) => {
+        if (!filePath) return { icon: 'article', color: 'text-slate-400' };
+
+        const ext = filePath.split('.').pop()?.toLowerCase() || '';
+
+        if (['pdf'].includes(ext)) return { icon: 'picture_as_pdf', color: 'text-red-500' };
+        if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) return { icon: 'image', color: 'text-purple-500' };
+        if (['doc', 'docx'].includes(ext)) return { icon: 'description', color: 'text-blue-600' };
+        if (['xls', 'xlsx'].includes(ext)) return { icon: 'table_view', color: 'text-green-600' };
+
+        return { icon: 'article', color: 'text-slate-400' };
+    };
+
     return (
         <div className="flex flex-col h-full bg-slate-50 dark:bg-black/5">
             {/* Filters & Tools */}
@@ -109,48 +122,51 @@ export const DocumentExplorer: React.FC = () => {
                                 {documents.length === 0 ? (
                                     <tr><td colSpan={5} className="px-6 py-8 text-center text-slate-500">No se encontraron documentos.</td></tr>
                                 ) : (
-                                    documents.map((doc) => (
-                                        <tr key={doc.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group">
-                                            <td className="px-6 py-4">
-                                                <div className="flex items-center gap-3">
-                                                    <span className="material-symbols-outlined text-red-500">picture_as_pdf</span>
-                                                    <div>
-                                                        <p className="text-sm font-bold text-slate-900 dark:text-white cursor-pointer hover:text-primary" onClick={() => handleViewDocument(doc.id)}>{doc.title}</p>
-                                                        <p className="text-xs text-slate-500">{doc.type_name}</p>
+                                    documents.map((doc) => {
+                                        const fileIcon = getFileIcon(doc.file_path);
+                                        return (
+                                            <tr key={doc.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group">
+                                                <td className="px-6 py-4">
+                                                    <div className="flex items-center gap-3">
+                                                        <span className={`material-symbols-outlined ${fileIcon.color}`}>{fileIcon.icon}</span>
+                                                        <div>
+                                                            <p className="text-sm font-bold text-slate-900 dark:text-white cursor-pointer hover:text-primary" onClick={() => handleViewDocument(doc.id)}>{doc.title}</p>
+                                                            <p className="text-xs text-slate-500">{doc.type_name}</p>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">
-                                                {new Date(doc.created_at).toLocaleDateString()}
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <div className="flex items-center gap-2">
-                                                    <div className="size-6 rounded-full bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-600">
-                                                        {doc.uploader_name?.substring(0, 2).toUpperCase()}
+                                                </td>
+                                                <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">
+                                                    {new Date(doc.created_at).toLocaleDateString()}
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="size-6 rounded-full bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-600">
+                                                            {doc.uploader_name?.substring(0, 2).toUpperCase()}
+                                                        </div>
+                                                        <span className="text-sm text-slate-700 dark:text-slate-300">{doc.uploader_name}</span>
                                                     </div>
-                                                    <span className="text-sm text-slate-700 dark:text-slate-300">{doc.uploader_name}</span>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold 
-                                                    ${doc.status === 'APPROVED' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
-                                                        doc.status === 'DRAFT' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
-                                                            'bg-slate-100 text-slate-600'}`}>
-                                                    {doc.status}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4 text-right">
-                                                <div className="flex items-center justify-end gap-1">
-                                                    <button onClick={() => handleViewDocument(doc.id)} className="p-2 text-slate-400 hover:text-primary transition-colors" title="Ver Documento">
-                                                        <span className="material-symbols-outlined text-[20px]">visibility</span>
-                                                    </button>
-                                                    <button onClick={(e) => handleDownload(doc.id, e)} className="p-2 text-slate-400 hover:text-primary transition-colors" title="Descargar">
-                                                        <span className="material-symbols-outlined text-[20px]">download</span>
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold 
+                                                        ${doc.status === 'APPROVED' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                                                            doc.status === 'DRAFT' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
+                                                                'bg-slate-100 text-slate-600'}`}>
+                                                        {doc.status}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 text-right">
+                                                    <div className="flex items-center justify-end gap-1">
+                                                        <button onClick={() => handleViewDocument(doc.id)} className="p-2 text-slate-400 hover:text-primary transition-colors" title="Ver Documento">
+                                                            <span className="material-symbols-outlined text-[20px]">visibility</span>
+                                                        </button>
+                                                        <button onClick={(e) => handleDownload(doc.id, e)} className="p-2 text-slate-400 hover:text-primary transition-colors" title="Descargar">
+                                                            <span className="material-symbols-outlined text-[20px]">download</span>
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })
                                 )}
                             </tbody>
                         </table>

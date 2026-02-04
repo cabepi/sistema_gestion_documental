@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { apiClient } from '../../api/client';
 import { useNavigate } from 'react-router-dom';
 
@@ -32,10 +32,22 @@ export const UploadAndIndexing: React.FC = () => {
         e.preventDefault();
         setIsDragging(false);
         const droppedFile = e.dataTransfer.files[0];
-        if (droppedFile && droppedFile.type === 'application/pdf') {
-            handleFileSelection(droppedFile);
-        } else {
-            alert('Por favor, sube un archivo PDF válido.');
+
+        if (droppedFile) {
+            const validTypes = [
+                'application/pdf',
+                'image/jpeg', 'image/png', 'image/gif',
+                'application/msword',
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'application/vnd.ms-excel',
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            ];
+
+            if (validTypes.includes(droppedFile.type)) {
+                handleFileSelection(droppedFile);
+            } else {
+                alert('Tipo de archivo no soportado. Por favor sube PDF, Imágenes, Word o Excel.');
+            }
         }
     };
 
@@ -124,7 +136,7 @@ export const UploadAndIndexing: React.FC = () => {
                                 <span className="material-symbols-outlined text-[40px]">cloud_upload</span>
                             </div>
                             <h3 className="text-xl font-bold text-slate-700 dark:text-slate-200 mb-2">Arrastra y suelta tu PDF aquí</h3>
-                            <p className="text-slate-500 mb-8 max-w-md">Soporta archivos PDF de hasta 20MB. El sistema procesará automáticamente el texto mediante OCR.</p>
+                            <p className="text-slate-500 mb-8 max-w-md">Soporta PDF, JPG, PNG, DOCX, XLSX.</p>
                             <button
                                 onClick={() => fileInputRef.current?.click()}
                                 className="px-6 py-3 bg-primary text-white font-bold rounded-lg shadow-lg shadow-primary/20 hover:opacity-90 transition-all"
@@ -135,7 +147,7 @@ export const UploadAndIndexing: React.FC = () => {
                                 type="file"
                                 ref={fileInputRef}
                                 className="hidden"
-                                accept="application/pdf"
+                                accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
                                 onChange={handleFileSelect}
                             />
                         </div>
@@ -143,7 +155,11 @@ export const UploadAndIndexing: React.FC = () => {
                         <>
                             <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-900 z-10">
                                 <div className="flex items-center gap-3">
-                                    <span className="material-symbols-outlined text-red-500">picture_as_pdf</span>
+                                    <span className="material-symbols-outlined text-red-500">
+                                        {file.type.startsWith('image/') ? 'image' :
+                                            file.type.includes('word') ? 'description' :
+                                                file.type.includes('excel') || file.type.includes('spreadsheet') ? 'table_view' : 'picture_as_pdf'}
+                                    </span>
                                     <h3 className="font-bold text-slate-800 dark:text-slate-100 truncate max-w-[300px]">{file.name}</h3>
                                 </div>
                                 <div className="flex gap-2">
@@ -154,11 +170,29 @@ export const UploadAndIndexing: React.FC = () => {
                             </div>
                             <div className="flex-1 bg-slate-200 dark:bg-slate-950 p-4 flex justify-center overflow-auto">
                                 {previewUrl && (
-                                    <iframe
-                                        src={previewUrl}
-                                        className="w-full h-full max-w-[800px] shadow-2xl rounded-lg bg-white"
-                                        title="PDF Preview"
-                                    />
+                                    <>
+                                        {file.type.startsWith('image/') ? (
+                                            <img
+                                                src={previewUrl}
+                                                className="w-full h-auto max-h-full object-contain shadow-2xl rounded-lg bg-white"
+                                                alt="Preview"
+                                            />
+                                        ) : file.type === 'application/pdf' ? (
+                                            <iframe
+                                                src={previewUrl}
+                                                className="w-full h-full max-w-[800px] shadow-2xl rounded-lg bg-white"
+                                                title="PDF Preview"
+                                            />
+                                        ) : (
+                                            <div className="flex flex-col items-center justify-center p-10 bg-white rounded-xl shadow-lg">
+                                                <span className="material-symbols-outlined text-[64px] text-blue-500 mb-4">
+                                                    {file.name.endsWith('.xls') || file.name.endsWith('.xlsx') ? 'table_view' : 'description'}
+                                                </span>
+                                                <p className="text-slate-600 font-bold mb-2">Vista previa no disponible para este formato</p>
+                                                <p className="text-sm text-slate-400">{file.name}</p>
+                                            </div>
+                                        )}
+                                    </>
                                 )}
                             </div>
                         </>
@@ -221,6 +255,7 @@ export const UploadAndIndexing: React.FC = () => {
                                             <option value="RESOLUCION">Resolución</option>
                                             <option value="CONTRATO">Contrato</option>
                                             <option value="CARTA">Carta</option>
+                                            <option value="FACTURA">Factura</option>
                                         </select>
                                         <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">expand_more</span>
                                     </div>

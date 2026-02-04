@@ -126,13 +126,45 @@ export const ViewerAndHistory: React.FC = () => {
                             </a>
                         </div>
                         {/* Canvas Placeholder */}
-                        <div className="flex-1 bg-gray-200 dark:bg-gray-900 m-8 rounded border-dashed border-2 border-gray-300 dark:border-gray-700 flex items-center justify-center overflow-hidden">
+                        <div className="flex-1 bg-gray-200 dark:bg-gray-900 m-8 rounded border-dashed border-2 border-gray-300 dark:border-gray-700 flex items-center justify-center overflow-hidden relative">
                             {document.file_url ? (
-                                <iframe src={document.file_url} className="w-full h-full" title="Document Preview" />
+                                (() => {
+                                    // Helper to determine type from file usage or extension
+                                    // Ideally we should store mimetype in DB, but we can infer from extension/url for now
+                                    const ext = document.file_path?.split('.').pop()?.toLowerCase();
+                                    const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext);
+                                    const isPdf = ext === 'pdf';
+                                    const isOffice = ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'].includes(ext);
+
+                                    if (isImage) {
+                                        return <img src={document.file_url} className="max-w-full max-h-full object-contain" alt="Document Preview" />;
+                                    } else if (isPdf) {
+                                        return <iframe src={document.file_url} className="w-full h-full" title="Document Preview" />;
+                                    } else if (isOffice) {
+                                        // Use Microsoft Office Web Viewer
+                                        // Note: This requires the file_url to be publicly accessible (which presigned URLs usually are)
+                                        const encodedUrl = encodeURIComponent(document.file_url);
+                                        return (
+                                            <iframe
+                                                src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodedUrl}`}
+                                                className="w-full h-full"
+                                                title="Office Document Preview"
+                                            />
+                                        );
+                                    } else {
+                                        return (
+                                            <div className="text-center p-8">
+                                                <span className="material-symbols-outlined text-6xl text-gray-400 mb-4">download_for_offline</span>
+                                                <p className="text-gray-500 font-medium mb-4">Vista previa no disponible para este formato ({ext})</p>
+                                                <a href={document.file_url} className="px-4 py-2 bg-primary text-white rounded hover:bg-opacity-90">Descargar Archivo</a>
+                                            </div>
+                                        );
+                                    }
+                                })()
                             ) : (
                                 <div className="text-center p-8">
-                                    <span className="material-symbols-outlined text-6xl text-gray-400 mb-4">picture_as_pdf</span>
-                                    <p className="text-gray-500 font-medium">Previsualización no disponible</p>
+                                    <span className="material-symbols-outlined text-6xl text-gray-400 mb-4">broken_image</span>
+                                    <p className="text-gray-500 font-medium">No hay archivo adjunto</p>
                                 </div>
                             )}
                         </div>

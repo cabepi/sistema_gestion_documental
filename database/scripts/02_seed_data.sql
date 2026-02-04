@@ -29,6 +29,14 @@ INSERT INTO sgd.documents (title, description, document_type_id, file_path, mime
 ('Convenio Bilateral Colombia', 'Intercambio cultural 2024', 3, '/docs/conv-col.pdf', 'application/pdf', 3, 'REVIEW', 'COMPLETED', NOW() - INTERVAL '4 days'),
 ('Manual de Usuario SGD', 'Documentación del sistema', 2, '/docs/manual.pdf', 'application/pdf', 1, 'APPROVED', 'COMPLETED', NOW() - INTERVAL '1 day');
 
+INSERT INTO sgd.document_types (code, name, description) VALUES
+('MEMORANDO', 'Memorando', 'Comunicación interna'),
+('RESOLUCION', 'Resolución', 'Decisión administrativa'),
+('CONTRATO', 'Contrato', 'Acuerdo legal'),
+('CARTA', 'Carta', 'Comunicación externa'),
+('FACTURA', 'Factura', 'Comprobante de gastos o servicios')
+ON CONFLICT (code) DO NOTHING;
+
 -- 3. Flujos de Trabajo (5 registros)
 INSERT INTO sgd.workflows (name, description, is_active, created_by) VALUES
 ('Aprobación Legal Estándar', 'Flujo base para resoluciones y contratos legales', TRUE, 1),
