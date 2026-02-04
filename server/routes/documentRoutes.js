@@ -74,6 +74,19 @@ import path from 'path';
 // Multer setup for memory storage (we upload buffer to S3)
 const upload = multer({ storage: multer.memoryStorage() });
 
+// Helper to log audit events
+const logAudit = async (userId, action, entityId, details = {}) => {
+    try {
+        await query(
+            `INSERT INTO sgd.audit_logs (user_id, action, entity_type, entity_id, details)
+             VALUES ($1, $2, 'DOCUMENT', $3, $4)`,
+            [userId, action, entityId, JSON.stringify(details)]
+        );
+    } catch (error) {
+        console.error('Error logging audit event:', error);
+    }
+};
+
 const s3 = new S3Client({
     region: process.env.AWS_REGION,
     credentials: {
@@ -189,7 +202,8 @@ router.get('/:id', async (req, res) => {
 // PATCH /api/documents/:id/status
 router.patch('/:id/status', async (req, res) => {
     const { id } = req.params;
-    const { status } = req.body;
+    const { status, reason } = req.body;
+    const userId = req.user.id;
 
     const validStatuses = ['DRAFT', 'REVIEW', 'APPROVED', 'REJECTED'];
     if (!validStatuses.includes(status)) {
@@ -197,18 +211,43 @@ router.patch('/:id/status', async (req, res) => {
     }
 
     try {
-        const { rows } = await query(
+        // Update document status
+        const updateRes = await query(
             'UPDATE sgd.documents SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING *',
             [status, id]
         );
 
-        if (rows.length === 0) {
-            return res.status(404).json({ message: 'Documento no encontrado' });
+        if (updateRes.rows.length === 0) {
+            return res.status(404).send('Document not found');
         }
 
-        res.json(rows[0]);
+        // Log to audit table
+        const action = status === 'APPROVED' ? 'APPROVE' : status === 'REJECTED' ? 'REJECT' : 'UPDATE_STATUS';
+        const details = reason ? { reason } : {};
+
+        await logAudit(userId, action, id, details);
+
+        res.json(updateRes.rows[0]);
     } catch (err) {
-        console.error(err.message);
+        console.error(err);
+        res.status(500).send('Server Error');
+    }
+});
+
+// GET /api/documents/:id/history
+router.get('/:id/history', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const { rows } = await query(`
+            SELECT a.id, a.action, a.details, a.created_at, u.full_name as user_name, u.avatar_url
+            FROM sgd.audit_logs a
+            JOIN sgd.users u ON a.user_id = u.id
+            WHERE a.entity_type = 'DOCUMENT' AND a.entity_id = $1
+            ORDER BY a.created_at DESC
+        `, [id]);
+        res.json(rows);
+    } catch (err) {
+        console.error(err);
         res.status(500).send('Server Error');
     }
 });
